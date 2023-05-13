@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 import sys
 
@@ -8,6 +6,7 @@ if sys.version_info >= (3, 8):
 else:
     from typing_extensions import TypedDict
 
+from typing import List
 from xml.dom import minidom
 
 
@@ -31,7 +30,7 @@ class Annotation(TypedDict):
     height: int
     depth: int
     segmented: bool
-    objects: list[Object]
+    objects: List[Object]
 
 
 def parse_xml(file_name: str) -> Annotation:

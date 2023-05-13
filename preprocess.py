@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import codecs
 import json
 import os
+from typing import Dict
 
 from PIL import Image
 
@@ -23,8 +22,9 @@ def crop_objects(image_path: str, anno_path: str, output_dir: str) -> None:
             os.makedirs(category_dir, exist_ok=True)
         obj_image.save(os.path.join(
             category_dir, os.path.split(image_path)[1] + f'_{i}.png'), 'PNG')
-        
-def get_categories(anno_path: str) -> dict[int, str]:
+
+
+def get_categories(anno_path: str) -> Dict[int, str]:
     categories: dict[int, str] = {}
     index = 0
     for file in os.listdir(anno_path):
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         image_path = os.path.join('datasets/JPEGImages', image_name)
         anno_path = os.path.join('datasets/Annotations', image_name.replace(
             '.jpg', '.xml'))
-        crop_objects(image_path, anno_path, os.path.abspath('datasets/Cropped'))
+        crop_objects(image_path, anno_path, 'datasets/Cropped')
 
     # Dump categories to json file
     categories = get_categories('datasets/Annotations')

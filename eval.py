@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 
 import torch
@@ -24,7 +22,7 @@ if __name__ == '__main__':
                               Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     validate_dataset = ImageFolder(root=data_path, transform=data_transform)
     validate_loader = DataLoader(
-        validate_dataset, batch_size=4, shuffle=False,  num_workers=os.cpu_count())
+        validate_dataset, batch_size=4, shuffle=False, num_workers=os.cpu_count())
     val_num = len(validate_dataset)
     acc_sum = 0.0
     with torch.no_grad():
