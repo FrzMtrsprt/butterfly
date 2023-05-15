@@ -11,11 +11,11 @@ from annotation_parser import parse_xml
 def crop_objects(image_path: str, anno_path: str, output_dir: str) -> None:
     image = Image.open(image_path)
     annotation = parse_xml(anno_path)
-    for i in range(len(annotation['objects'])):
-        obj = annotation['objects'][i]
+    for i, obj in enumerate(annotation['objects']):
         obj_name = obj['name']
+        bndbox = obj['bndbox']
         obj_image = image.crop(
-            (obj['xmin'], obj['ymin'], obj['xmax'], obj['ymax']))
+            (bndbox['xmin'], bndbox['ymin'], bndbox['xmax'], bndbox['ymax']))
 
         category_dir = os.path.join(output_dir, obj_name)
         if not os.path.exists(category_dir):
