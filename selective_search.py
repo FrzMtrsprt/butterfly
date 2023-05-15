@@ -1,7 +1,9 @@
-import cv2
 import os
+from typing import List
 
-from typing import List, Tuple
+import cv2
+
+from annotation_parser import BndBox
 
 # speed-up using multithreads
 cv2.setUseOptimized(True)
@@ -11,7 +13,7 @@ cv2.setNumThreads(cpu_count if cpu_count else 1)
 ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
 
 
-def selective_search(image_path: str) -> List[Tuple[int, int, int, int]]:
+def selective_search(image_path: str) -> List[BndBox]:
 
     im = cv2.imread(image_path)
 
@@ -26,15 +28,18 @@ def selective_search(image_path: str) -> List[Tuple[int, int, int, int]]:
 
     rects = ss.process()
 
-    scaled_rects: List[Tuple[int, int, int, int]] = []
+    bndboxes: List[BndBox] = []
     for rect in rects:
         scaled_rect = (int(rect[0] / scale_rate),  # left
                        int(rect[1] / scale_rate),  # top
                        int(rect[2] / scale_rate),  # width
                        int(rect[3] / scale_rate))  # height
-        scaled_rects.append(scaled_rect)
+        bndbox = BndBox(xmin=scaled_rect[0], ymin=scaled_rect[1],
+                        xmax=scaled_rect[0] + scaled_rect[2],
+                        ymax=scaled_rect[1] + scaled_rect[3])
+        bndboxes.append(bndbox)
 
-    return scaled_rects
+    return bndboxes
 
 
 if __name__ == '__main__':

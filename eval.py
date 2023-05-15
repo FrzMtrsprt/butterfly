@@ -1,12 +1,13 @@
+import codecs
+import json
 import os
-import time
 
 import torch
 from torch.utils.data import DataLoader
-from torchvision.datasets import ImageFolder
+from torchvision.models.alexnet import AlexNet
 from torchvision.transforms import Compose, Normalize, Resize, ToTensor
 
-from torchvision.models.alexnet import AlexNet
+from dataset_models import ClassificationDataset
 
 if __name__ == '__main__':
     # load the model and evaluate it
@@ -17,24 +18,35 @@ if __name__ == '__main__':
     model.load_state_dict(state_dict)
     model.eval()
 
-    data_path = os.path.abspath(os.path.join(os.getcwd(), "datasets/Cropped"))
+    # 指定数据集目录
+    image_path = os.path.abspath('datasets/JPEGImages/')
+    if not os.path.exists(image_path):
+        raise Exception(f"{image_path} path does not exist.")
+
+    anno_path = os.path.abspath('datasets/Annotations/')
+    if not os.path.exists(anno_path):
+        raise Exception(f"{anno_path} path does not exist.")
+
     data_transform = Compose([Resize((224, 224)),
                               ToTensor(),
                               Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-    validate_dataset = ImageFolder(root=data_path, transform=data_transform)
-    validate_loader = DataLoader(
-        validate_dataset, batch_size=4, shuffle=False, num_workers=os.cpu_count())
-    val_num = len(validate_dataset)
+    
+    with codecs.open('categories.json', 'r', 'utf-8') as f:
+        idx_to_class = json.load(f)
+    class_to_idx = {v: int(k) for k, v in idx_to_class.items()}
+    
+    dataset = ClassificationDataset(anno_path, image_path, class_to_idx, data_transform)
+    validate_loader = DataLoader(dataset, batch_size=4, shuffle=False, num_workers=os.cpu_count())
+
+    val_num = len(dataset)
     acc_sum = 0.0
     with torch.no_grad():
         for val_data in validate_loader:
-            begin = time.time()
             val_images, val_labels = val_data
             outputs = model(val_images)
             predict_y = torch.max(outputs, dim=1)[1]
             acc_sum += torch.eq(predict_y, val_labels).sum().item()
-            end = time.time()
-            print(f'cost time: {end - begin}s')
+            print(predict_y, val_labels)
 
     val_accurate = acc_sum / val_num
     print(f'val_accuracy: {val_accurate:.3f}')
