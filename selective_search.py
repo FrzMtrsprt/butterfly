@@ -3,14 +3,12 @@ import os
 
 from typing import List, Tuple
 
+# speed-up using multithreads
+cv2.setUseOptimized(True)
+cpu_count = os.cpu_count()
+cv2.setNumThreads(cpu_count if cpu_count else 1)
+
 ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
-
-
-def init():
-    # speed-up using multithreads
-    cv2.setUseOptimized(True)
-    cpu_count = os.cpu_count()
-    cv2.setNumThreads(cpu_count if cpu_count else 1)
 
 
 def selective_search(image_path: str) -> List[Tuple[int, int, int, int]]:
@@ -30,17 +28,16 @@ def selective_search(image_path: str) -> List[Tuple[int, int, int, int]]:
 
     scaled_rects: List[Tuple[int, int, int, int]] = []
     for rect in rects:
-        scaled_rect = (int(rect[0] / scale_rate),
-                       int(rect[1] / scale_rate),
-                       int(rect[2] / scale_rate),
-                       int(rect[3] / scale_rate))
+        scaled_rect = (int(rect[0] / scale_rate),  # left
+                       int(rect[1] / scale_rate),  # top
+                       int(rect[2] / scale_rate),  # width
+                       int(rect[3] / scale_rate))  # height
         scaled_rects.append(scaled_rect)
 
     return scaled_rects
 
 
 if __name__ == '__main__':
-    init()
     image_path = 'datasets/JPEGImages/IMG_000001.jpg'
     rects = selective_search(image_path)
     print('Total Number of Region Proposals: {}'.format(len(rects)))
