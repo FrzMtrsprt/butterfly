@@ -1,16 +1,18 @@
 import os
-import json
-
 from typing import Callable, Dict, List, Optional, Tuple
 
+from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
-from PIL import Image
+from torchvision.transforms import Compose, PILToTensor
 
 from annotation_parser import BndBox, parse_xml
 
 
 class ButterflyDataset(Dataset[Tensor]):
+    """
+    Creates a dataset of object images cropped with bounding boxes.
+    """
 
     def __init__(self, anno_dir: str,
                  image_dir: str,
@@ -46,9 +48,40 @@ class ButterflyDataset(Dataset[Tensor]):
             image = image.convert('RGB')
         bndbox = self.datas[index][2]
 
-        image = image.crop((bndbox['xmin'], bndbox['ymin'], bndbox['xmax'], bndbox['ymax']))
+        image = image.crop((bndbox['xmin'], bndbox['ymin'],
+                            bndbox['xmax'], bndbox['ymax']))
         if self.transform:
             image = self.transform(image)
 
         label = self.class_to_idx[self.datas[index][1]]
         return image, label
+
+
+class BndboxDataset(Dataset[Tensor]):
+    """
+    Creates a dataset cropped by the rects.
+    """
+
+    def __init__(self, image_path: str,
+                 rects: List[Tuple[int, int, int, int]],
+                 transform: Optional[Callable[..., Tensor]]) -> None:
+
+        with open(image_path, 'rb') as f:
+            image = Image.open(f)
+            self.image = image.convert('RGB')
+        self.rects = rects
+        self.transform = transform
+
+    def __len__(self) -> int:
+
+        return len(self.rects)
+
+    def __getitem__(self, index: int) -> Tensor:
+
+        rect = self.rects[index]
+        image = self.image.crop((rect[0], rect[1],
+                                 rect[0] + rect[2], rect[1] + rect[3]))
+        if self.transform:
+            image = self.transform(image)
+
+        return image
