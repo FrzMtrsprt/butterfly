@@ -1,11 +1,12 @@
 import os
+import time
 
 import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import Compose, Normalize, Resize, ToTensor
 
-from alexnet import AlexNet
+from torchvision.models.alexnet import AlexNet
 
 if __name__ == '__main__':
     # load the model and evaluate it
@@ -27,10 +28,13 @@ if __name__ == '__main__':
     acc_sum = 0.0
     with torch.no_grad():
         for val_data in validate_loader:
+            begin = time.time()
             val_images, val_labels = val_data
             outputs = model(val_images)
             predict_y = torch.max(outputs, dim=1)[1]
             acc_sum += torch.eq(predict_y, val_labels).sum().item()
+            end = time.time()
+            print(f'cost time: {end - begin}s')
 
     val_accurate = acc_sum / val_num
     print(f'val_accuracy: {val_accurate:.3f}')

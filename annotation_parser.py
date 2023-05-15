@@ -10,15 +10,19 @@ from typing import List
 from xml.dom import minidom
 
 
+class BndBox(TypedDict):
+    xmin: int
+    ymin: int
+    xmax: int
+    ymax: int
+
+
 class Object(TypedDict):
     name: str
     pose: str
     truncated: bool
     difficult: bool
-    xmin: int
-    ymin: int
-    xmax: int
-    ymax: int
+    bndbox: BndBox
 
 
 class Annotation(TypedDict):
@@ -64,10 +68,10 @@ def parse_xml(file_name: str) -> Annotation:
                                   pose=str(pose.firstChild.data),
                                   truncated=str(truncated.firstChild.data) == "1",
                                   difficult=str(difficult.firstChild.data) == "1",
-                                  xmin=int(xmin.firstChild.data),
-                                  ymin=int(ymin.firstChild.data),
-                                  xmax=int(xmax.firstChild.data),
-                                  ymax=int(ymax.firstChild.data)))
+                                  bndbox=BndBox(xmin=int(xmin.firstChild.data),
+                                                ymin=int(ymin.firstChild.data),
+                                                xmax=int(xmax.firstChild.data),
+                                                ymax=int(ymax.firstChild.data))))
 
     return Annotation(folder=str(folder.firstChild.data),
                       filename=str(filename.firstChild.data),
