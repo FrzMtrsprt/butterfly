@@ -1,9 +1,11 @@
 import os
+import random
 from typing import List
 
 import cv2
+import pandas as pd
 
-from annotation_parser import BndBox
+from annotation_parser import BndBox, parse_xml
 
 # speed-up using multithreads
 cv2.setUseOptimized(True)
@@ -42,51 +44,67 @@ def selective_search(image_path: str) -> List[BndBox]:
     return bndboxes
 
 
+def IoU(box1: BndBox, box2: BndBox) -> float:
+
+    x_left = max(box1['xmin'], box2['xmin'])
+    y_top = max(box1['ymin'], box2['ymin'])
+    x_right = min(box1['xmax'], box2['xmax'])
+    y_bottom = min(box1['ymax'], box2['ymax'])
+
+    if x_right < x_left or y_bottom < y_top:
+        return 0.0
+
+    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+    box1_area = (box1['xmax'] - box1['xmin']) * (box1['ymax'] - box1['ymin'])
+    box2_area = (box2['xmax'] - box2['xmin']) * (box2['ymax'] - box2['ymin'])
+    union_area = box1_area + box2_area - intersection_area
+
+    return intersection_area / union_area
+
+
 if __name__ == '__main__':
-    image_path = 'datasets/JPEGImages/IMG_000001.jpg'
-    rects = selective_search(image_path)
-    print('Total Number of Region Proposals: {}'.format(len(rects)))
 
-    # number of region proposals to show
-    numShowRects = 100
-    # increment to increase/decrease total number
-    # of reason proposals to be shown
-    increment = 50
-    im = cv2.imread(image_path)
+    image_dir = 'datasets/JPEGImages'
+    anno_dir = 'datasets/Annotations'
+    prop_dir = 'datasets/Proposals'
+    if not os.path.exists(prop_dir):
+        os.mkdir(prop_dir)
 
-    while True:
-        # create a copy of original image
-        imOut = im.copy()
+    for i, image_file in enumerate(os.listdir(image_dir)):
 
-        # itereate over all the region proposals
-        for i, rect in enumerate(rects):
-            # draw rectangle for region proposal till numShowRects
-            if (i < numShowRects):
-                x, y, w, h = rect
-                cv2.rectangle(imOut, (x, y), (x+w, y+h),
-                              (0, 255, 0), 1, cv2.LINE_AA)
+        image_path = os.path.join(image_dir, image_file)
+        anno_path = os.path.join(anno_dir, image_file.replace('jpg', 'xml'))
+
+        proposals = selective_search(image_path)
+        annotation = parse_xml(anno_path)
+        objects = [obj['bndbox'] for obj in annotation['objects']]
+
+        # Divide proposals into positive and negative samples
+        positive_list: List[BndBox] = []
+        negative_list: List[BndBox] = []
+        for prop in proposals:
+            result = False
+            for obj in objects:
+                if IoU(prop, obj) > 0.5:
+                    result = True
+                    break
+            if result:
+                positive_list.append(prop)
             else:
-                break
+                negative_list.append(prop)
 
-        cv2.putText(imOut, str(numShowRects), (0, 100),
-                    cv2.FONT_HERSHEY_PLAIN, 10, 1, 10)
+        # Balance positive and negative samples
+        negative_list = random.sample(negative_list, len(positive_list))
 
-        # show output
-        cv2.imshow("Output", cv2.resize(imOut, (1920, 1080)))
-
-        # record key press
-        k = cv2.waitKey(0) & 0xFF
-
-        # m is pressed
-        if k == 109:
-            # increase total number of rectangles to show by increment
-            numShowRects += increment
-        # l is pressed
-        elif k == 108 and numShowRects > increment:
-            # decrease total number of rectangles to show by increment
-            numShowRects -= increment
-        # q is pressed
-        elif k == 113:
-            break
-    # close image show window
-    cv2.destroyAllWindows()
+        # Save proposals as csv files
+        frame = pd.DataFrame({'xmin': [prop['xmin'] for prop in positive_list + negative_list],
+                              'ymin': [prop['ymin'] for prop in positive_list + negative_list],
+                              'xmax': [prop['xmax'] for prop in positive_list + negative_list],
+                              'ymax': [prop['ymax'] for prop in positive_list + negative_list],
+                              'label': [1 for _ in positive_list] + [0 for _ in negative_list]})
+        frame.to_csv(os.path.join(
+            prop_dir, image_file.replace('jpg', 'csv')), index=False)
+        
+        # Print progress every 10 images
+        if i % 10 == 0:
+            print(f'{i+1}/{len(os.listdir(image_dir))}: {image_file}')
