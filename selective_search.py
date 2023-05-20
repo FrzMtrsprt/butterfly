@@ -17,6 +17,8 @@ ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
 
 def selective_search(image_path: str) -> List[BndBox]:
 
+    if not os.path.exists(image_path):
+        raise Exception(f'image path does not exist: {image_path}')
     im = cv2.imread(image_path)
 
     # resize image
