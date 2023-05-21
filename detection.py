@@ -62,7 +62,7 @@ if __name__ == "__main__":
     image = cv2.imread(image_path)
 
     start = time.time()
-    nms_list = detect(image_path, 0.1)
+    nms_list = detect(image_path, 0)
     end = time.time()
     print('Detection finished in {:.3f}s'.format(end - start))
 

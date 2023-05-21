@@ -96,7 +96,7 @@ class DetectionDataset(Dataset[Tensor]):
         
         image = image.crop((prop['xmin'], prop['ymin'],
                             prop['xmax'], prop['ymax']))
-        label = prop['label']
+        label = int(prop['label'])
 
         if self.transform:
             image = self.transform(image)
