@@ -98,10 +98,13 @@ if __name__ == '__main__':
             else:
                 negative_list.append((prop, iou))
 
-        # If there are more than 5 positive samples, select the top 5
-        if len(positive_list) > 5:
-            positive_list.sort(reverse=True, key=lambda item: item[1])
-            positive_list = positive_list[:5]
+        # Increase threshhold until there are no more than 10 positives
+        # And take 5 of them
+        threshhold = 0.5
+        while len(positive_list) > 10:
+            threshhold += 0.1
+            positive_list = [item for item in positive_list if item[1] > threshhold]
+        positive_list = positive_list[:5]
 
         # Balance positive and negative samples
         negative_list = [item for item in negative_list if item[1] == 0.0]

@@ -63,7 +63,7 @@ class DetectionDataset(Dataset[Tensor]):
 
     def __init__(self, image_dir: str,
                  prop_dir: str,
-                 transform: Optional[Callable[..., Tensor]]) -> None:
+                 transform: Optional[Callable[..., Tensor]] = None) -> None:
 
         self.transform = transform
         self.item_list: List[Tuple[str, Any]] = []
