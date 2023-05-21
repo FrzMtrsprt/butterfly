@@ -1,6 +1,5 @@
 import os
-import random
-from typing import List
+from typing import List, Tuple
 
 import cv2
 import pandas as pd
@@ -15,7 +14,7 @@ cv2.setNumThreads(cpu_count if cpu_count else 1)
 ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
 
 
-def selective_search(image_path: str) -> List[BndBox]:
+def selective_search(image_path: str, strategy_quality: bool = False) -> List[BndBox]:
 
     if not os.path.exists(image_path):
         raise Exception(f'image path does not exist: {image_path}')
@@ -28,7 +27,10 @@ def selective_search(image_path: str) -> List[BndBox]:
     im = cv2.resize(im, (new_y, new_h))
 
     ss.setBaseImage(im)
-    ss.switchToSelectiveSearchFast()
+    if strategy_quality:
+        ss.switchToSelectiveSearchQuality()
+    else:
+        ss.switchToSelectiveSearchFast()
 
     rects = ss.process()
 
@@ -72,41 +74,52 @@ if __name__ == '__main__':
     if not os.path.exists(prop_dir):
         os.mkdir(prop_dir)
 
+    positive_num = 0
+    negative_num = 0
+
     for i, image_file in enumerate(os.listdir(image_dir)):
 
         image_path = os.path.join(image_dir, image_file)
         anno_path = os.path.join(anno_dir, image_file.replace('jpg', 'xml'))
 
-        proposals = selective_search(image_path)
+        proposals = selective_search(image_path, True)
         annotation = parse_xml(anno_path)
         objects = [obj['bndbox'] for obj in annotation['objects']]
 
         # Divide proposals into positive and negative samples
-        positive_list: List[BndBox] = []
-        negative_list: List[BndBox] = []
+        positive_list: List[Tuple[BndBox, float]] = []
+        negative_list: List[Tuple[BndBox, float]] = []
         for prop in proposals:
-            result = False
+            iou = 0
             for obj in objects:
-                if IoU(prop, obj) > 0.5:
-                    result = True
-                    break
-            if result:
-                positive_list.append(prop)
+                iou = IoU(prop, obj)
+            if iou > 0.5:
+                positive_list.append((prop, iou))
             else:
-                negative_list.append(prop)
+                negative_list.append((prop, iou))
+
+        # If there are more than 5 positive samples, select the top 5
+        if len(positive_list) > 5:
+            positive_list.sort(reverse=True, key=lambda item: item[1])
+            positive_list = positive_list[:5]
 
         # Balance positive and negative samples
-        negative_list = random.sample(negative_list, len(positive_list))
+        negative_list = [item for item in negative_list if item[1] == 0.0]
+        negative_list = negative_list[:len(positive_list)]
 
         # Save proposals as csv files
-        frame = pd.DataFrame({'xmin': [prop['xmin'] for prop in positive_list + negative_list],
-                              'ymin': [prop['ymin'] for prop in positive_list + negative_list],
-                              'xmax': [prop['xmax'] for prop in positive_list + negative_list],
-                              'ymax': [prop['ymax'] for prop in positive_list + negative_list],
-                              'label': [1 for _ in positive_list] + [0 for _ in negative_list]})
+        frame = pd.DataFrame({'xmin': [prop[0]['xmin'] for prop in positive_list + negative_list],
+                              'ymin': [prop[0]['ymin'] for prop in positive_list + negative_list],
+                              'xmax': [prop[0]['xmax'] for prop in positive_list + negative_list],
+                              'ymax': [prop[0]['ymax'] for prop in positive_list + negative_list],
+                              'label': [1 for _ in positive_list] + [0 for _ in negative_list],
+                              'iou': [prop[1] for prop in positive_list + negative_list]})
         frame.to_csv(os.path.join(
             prop_dir, image_file.replace('jpg', 'csv')), index=False)
-        
+
+        positive_num += len(positive_list)
+        negative_num += len(negative_list)
+
         # Print progress every 10 images
         if i % 10 == 0:
             print(f'{i+1}/{len(os.listdir(image_dir))}: {image_file}')

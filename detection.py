@@ -32,7 +32,7 @@ def detect(image_path: str, nms: float) -> List[Tuple[Tuple[int, int, int, int],
     image = cv2.imread(image_path)
 
     rects = [(box['xmin'], box['ymin'], box['xmax'], box['ymax'])
-             for box in selective_search(image_path)]
+             for box in selective_search(image_path, False)]
 
     # A list of tuples, each tuple is ((xmin, ymin, xmax, ymax), probability)
     positive_list: List[Tuple[Tuple[int, int, int, int], float]] = []
