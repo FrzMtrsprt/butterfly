@@ -37,9 +37,8 @@ def classify(image_path: str, rect: Tuple[int, int, int, int]) -> Tuple[int, flo
     # classify the image
     with torch.no_grad():
         output = model(image_rect)
-        prediction = int(torch.max(output, dim=1)[1])
-        probability = float(torch.max(output, dim=1)[0])
-
+        prediction = torch.argmax(output[0]).item()
+        probability = torch.softmax(output[0], dim=0)[prediction].item()
     return prediction, probability
 
 
